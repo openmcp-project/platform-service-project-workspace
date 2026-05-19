@@ -163,5 +163,5 @@ type WorkspaceList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Workspace{}, &WorkspaceList{})
+	RegisterToSchemeBuilder(&Workspace{}, &WorkspaceList{})
 }
