@@ -75,7 +75,7 @@ type ProjectWorkspaceConfigList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&ProjectWorkspaceConfig{}, &ProjectWorkspaceConfigList{})
+	RegisterToSchemeBuilder(&ProjectWorkspaceConfig{}, &ProjectWorkspaceConfigList{})
 }
 
 // SetDefaults sets the default values for the project workspace configuration when not set.

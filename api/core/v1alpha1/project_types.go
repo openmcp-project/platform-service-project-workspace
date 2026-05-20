@@ -163,5 +163,5 @@ type ProjectList struct {
 }
 
 func init() {
-	SchemeBuilder.Register(&Project{}, &ProjectList{})
+	RegisterToSchemeBuilder(&Project{}, &ProjectList{})
 }

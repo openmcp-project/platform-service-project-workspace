@@ -154,8 +154,8 @@ func defaultTestSetup(testDirPath string, knownAPIResources ...*metav1.APIResour
 		}, platformClusterID, onboardingClusterID).
 		Build()
 
-	pwc, ok := env.Reconciler(pwcRec).(*sharedconfig.PWOConfigController)
-	Expect(ok).To(BeTrue(), "Reconciler is not of type *PWOConfigController")
+	pwc, err := testutils.ReconcilerAs[*sharedconfig.PWOConfigController](env, pwcRec)
+	Expect(err).ToNot(HaveOccurred(), "Reconciler is not of type *PWOConfigController")
 
 	return pwc, env
 }
