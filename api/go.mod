@@ -1,6 +1,6 @@
 module github.com/openmcp-project/platform-service-project-workspace/api/v2
 
-go 1.26.2
+go 1.26.4
 
 require (
 	github.com/openmcp-project/controller-utils v0.29.0
