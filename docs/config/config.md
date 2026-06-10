@@ -73,11 +73,11 @@ In addition to the defaults listed below, both the resources that block workspac
 
 #### Resources Blocking Deletion
 
-By default, only `ManagedControlPlaneV2` resources block workspace deletion. If the platform service is running in [v1 support mode](./v1.md), `ManagedControlPlane` and `ClusterAdmin` resources will also block workspace deletion.
+By default, only `ControlPlane` resources block workspace deletion. If the platform service is running in [v1 support mode](./v1.md), `ManagedControlPlane` and `ClusterAdmin` resources will also block workspace deletion.
 
 #### Additional Permissions
 
-Both roles can manage (read for `view`, read and write for `admin`) `ManagedControlPlaneV2` resources, as well as secrets, configmaps, and serviceaccounts. In [v1 support mode](./v1.md), `ManagedControlPlane` and `ClusterAdmin` resources are covered as well. Similar to projects, both roles can list pods and read resourcequotas, with the `admin` additionally being able to create tokens for serviceaccounts.
+Both roles can manage (read for `view`, read and write for `admin`) `ControlPlane` resources, as well as secrets, configmaps, and serviceaccounts. In [v1 support mode](./v1.md), `ManagedControlPlane` and `ClusterAdmin` resources are covered as well. Similar to projects, both roles can list pods and read resourcequotas, with the `admin` additionally being able to create tokens for serviceaccounts.
 
 ### Member Overrides
 
