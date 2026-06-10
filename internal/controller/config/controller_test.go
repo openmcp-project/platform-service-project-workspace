@@ -66,10 +66,10 @@ var alwaysKnownAPIResources = []*metav1.APIResourceList{
 		GroupVersion: openmcpcorev2alpha1.GroupVersion.String(),
 		APIResources: []metav1.APIResource{
 			{
-				Name:       "managedcontrolplanev2s",
+				Name:       "controlplanes",
 				Group:      openmcpcorev2alpha1.GroupVersion.Group,
 				Version:    openmcpcorev2alpha1.GroupVersion.Version,
-				Kind:       "ManagedControlPlaneV2",
+				Kind:       "ControlPlane",
 				Namespaced: true,
 			},
 		},
@@ -77,12 +77,18 @@ var alwaysKnownAPIResources = []*metav1.APIResourceList{
 }
 var alwaysExpectedDynamicAccessPermissions = []rbacv1.PolicyRule{
 	{
-		APIGroups: []string{sharedconfig.OpenMCPV1ApiGroup},
+		APIGroups: []string{pwv1alpha1.GroupVersion.Group},
 		Resources: []string{
 			"workspaces",
 			"workspaces/status",
-			"managedcontrolplanev2s",
-			"managedcontrolplanev2s/status",
+		},
+		Verbs: utils.ReadOnlyVerbs(),
+	},
+	{
+		APIGroups: []string{openmcpcorev2alpha1.GroupVersion.Group},
+		Resources: []string{
+			"controlplanes",
+			"controlplanes/status",
 		},
 		Verbs: utils.ReadOnlyVerbs(),
 	},
@@ -334,7 +340,7 @@ func defaultWorkspacePermissionsPerRole() map[pwv1alpha1.WorkspaceMemberRole][]r
 		pwv1alpha1.WorkspaceRoleAdmin: {
 			{
 				APIGroups: []string{openmcpcorev2alpha1.GroupName},
-				Resources: []string{"managedcontrolplanev2s"},
+				Resources: []string{"controlplanes"},
 				Verbs:     utils.AllVerbs(),
 			},
 			{
@@ -365,7 +371,7 @@ func defaultWorkspacePermissionsPerRole() map[pwv1alpha1.WorkspaceMemberRole][]r
 		pwv1alpha1.WorkspaceRoleView: {
 			{
 				APIGroups: []string{openmcpcorev2alpha1.GroupName},
-				Resources: []string{"managedcontrolplanev2s"},
+				Resources: []string{"controlplanes"},
 				Verbs:     utils.ReadOnlyVerbs(),
 			},
 			{

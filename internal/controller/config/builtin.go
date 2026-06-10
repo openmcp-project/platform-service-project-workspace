@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	OpenMCPV1ApiGroup   = "core.openmcp.cloud"
+	OpenMCPV1ApiGroup   = "core.openmcp.cloud" // hard-coded here to avoid having to import the mcp-operator
 	OpenMCPV1ApiVersion = "v1alpha1"
 )
 
@@ -40,7 +40,7 @@ func BuiltinResourcesBlockingWorkspaceDeletion() []DeletionBlockingResource {
 			GroupVersionKind: metav1.GroupVersionKind{
 				Group:   openmcpcorev2alpha1.GroupVersion.Group,
 				Version: openmcpcorev2alpha1.GroupVersion.Version,
-				Kind:    "ManagedControlPlaneV2",
+				Kind:    "ControlPlane",
 			},
 			Source: pwv1alpha1.SourceBuiltin,
 		},
@@ -106,7 +106,7 @@ func BuiltinPermissibleWorkspaceResources() []rbacv1.PolicyRule {
 	res := []rbacv1.PolicyRule{
 		{
 			APIGroups: []string{openmcpcorev2alpha1.GroupName},
-			Resources: []string{"managedcontrolplanev2s"},
+			Resources: []string{"controlplanes"},
 		},
 		{
 			APIGroups: []string{corev1.GroupName},

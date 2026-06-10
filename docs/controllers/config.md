@@ -12,7 +12,7 @@ It watches the following resources:
 > [!NOTE]
 > **Service Resources**
 >
-> Some familiarity with the openmcp v2 architecture is required in order to understand this documentation. To quickly summarize the relevant aspect: `ServiceProvider` resources (which are managed by the landscape operators) can register so-called 'service resources' (by listing their GVK in their `ServiceProvider`'s status). End-users can then create instances of these service resources next to a `ManagedControlPlaneV2` within their workspaces to make the respective services available via the corresponding cluster.
+> Some familiarity with the openmcp v2 architecture is required in order to understand this documentation. To quickly summarize the relevant aspect: `ServiceProvider` resources (which are managed by the landscape operators) can register so-called 'service resources' (by listing their GVK in their `ServiceProvider`'s status). End-users can then create instances of these service resources next to a `ControlPlane` within their workspaces to make the respective services available via the corresponding cluster.
 
 ## End-User Permissions
 
