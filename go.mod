@@ -12,7 +12,7 @@ require (
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
 	sigs.k8s.io/controller-runtime v0.24.1
-	sigs.k8s.io/e2e-framework v0.6.0
+	sigs.k8s.io/e2e-framework v0.7.0
 )
 
 require (
@@ -99,7 +99,7 @@ require (
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10 // indirect
-	github.com/vladimirvivien/gexe v0.4.1 // indirect
+	github.com/vladimirvivien/gexe v0.5.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
 	golang.org/x/net v0.55.0 // indirect
