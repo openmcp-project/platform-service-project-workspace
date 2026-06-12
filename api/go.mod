@@ -4,10 +4,10 @@ go 1.26.4
 
 require (
 	github.com/openmcp-project/controller-utils v0.29.0
-	k8s.io/api v0.36.1
-	k8s.io/apiextensions-apiserver v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	k8s.io/api v0.36.2
+	k8s.io/apiextensions-apiserver v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 	sigs.k8s.io/controller-runtime v0.24.1
 )
 
