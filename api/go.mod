@@ -3,15 +3,17 @@ module github.com/openmcp-project/platform-service-project-workspace/api/v2
 go 1.26.4
 
 require (
-	github.com/openmcp-project/controller-utils v0.29.0
-	k8s.io/api v0.36.1
-	k8s.io/apiextensions-apiserver v0.36.1
-	k8s.io/apimachinery v0.36.1
-	k8s.io/client-go v0.36.1
+	github.com/openmcp-project/controller-utils v0.29.1
+	k8s.io/api v0.36.2
+	k8s.io/apiextensions-apiserver v0.36.2
+	k8s.io/apimachinery v0.36.2
+	k8s.io/client-go v0.36.2
 	sigs.k8s.io/controller-runtime v0.24.1
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.5.0 // indirect
+	github.com/evanphx/json-patch v5.9.11+incompatible // indirect
 	github.com/go-openapi/swag/cmdutils v0.26.0 // indirect
 	github.com/go-openapi/swag/conv v0.26.0 // indirect
 	github.com/go-openapi/swag/fileutils v0.26.0 // indirect
@@ -24,6 +26,9 @@ require (
 	github.com/go-openapi/swag/typeutils v0.26.0 // indirect
 	github.com/go-openapi/swag/yamlutils v0.26.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
+	github.com/klauspost/compress v1.18.6 // indirect
+	github.com/onsi/ginkgo/v2 v2.31.0 // indirect
+	github.com/onsi/gomega v1.42.0 // indirect
 	sigs.k8s.io/yaml v1.6.0 // indirect
 )
 
@@ -41,11 +46,11 @@ require (
 	github.com/go-openapi/jsonreference v0.21.5 // indirect
 	github.com/go-openapi/swag v0.26.0 // indirect
 	github.com/google/gnostic-models v0.7.1 // indirect
-	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/json-iterator/go v1.1.13-0.20220915233716-71ac16282d12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openmcp-project/openmcp-operator/api v1.0.0
+	github.com/openmcp-project/openmcp-operator/api v1.0.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.23.2 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -69,7 +74,7 @@ require (
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
-	k8s.io/kube-openapi v0.0.0-20260512234627-ef417d054102 // indirect
+	k8s.io/kube-openapi v0.0.0-20260603220949-865597e52e25 // indirect
 	k8s.io/utils v0.0.0-20260507154919-ff6756f316d2 // indirect
 	sigs.k8s.io/gateway-api v1.5.1
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
