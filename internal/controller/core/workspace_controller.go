@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
@@ -395,6 +396,34 @@ func (r *WorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				),
 			),
 		)).
+		Watches(&pwv1alpha1.Project{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+			// if the project labels changed, we might need to propagate this change to the project's workspaces, so we enqueue all workspaces in the project namespace
+			log := logging.FromContextOrDiscard(ctx)
+			project, ok := obj.(*pwv1alpha1.Project)
+			if !ok {
+				log.Error(nil, "Failed to cast object to Project", "object", obj)
+				return nil
+			}
+			nsName := project.Status.Namespace
+			if nsName == "" {
+				return nil
+			}
+			workspaces := &pwv1alpha1.WorkspaceList{}
+			if err := r.OnboardingStatic.Client().List(ctx, workspaces, client.InNamespace(nsName)); err != nil {
+				log.Error(err, "Failed to list workspaces for project", "project", project.Name)
+				return nil
+			}
+			requests := make([]ctrl.Request, len(workspaces.Items))
+			for i, ws := range workspaces.Items {
+				requests[i] = ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      ws.Name,
+						Namespace: ws.Namespace,
+					},
+				}
+			}
+			return requests
+		}), builder.WithPredicates(predicate.LabelChangedPredicate{})).
 		Complete(r)
 }
 
