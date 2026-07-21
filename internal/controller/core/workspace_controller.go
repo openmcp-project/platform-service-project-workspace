@@ -180,6 +180,7 @@ func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		for _, lkey := range labelsToPropagate {
 			if lval, ok := project.Labels[lkey]; ok {
+				log.Debug("Propagating label from project to workspace namespace", "labelKey", lkey, "labelValue", lval)
 				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
 			}
 		}
@@ -189,6 +190,7 @@ func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		for _, lkey := range labelsToPropagate {
 			if lval, ok := workspace.Labels[lkey]; ok {
+				log.Debug("Propagating label from workspace to workspace namespace", "labelKey", lkey, "labelValue", lval)
 				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
 			}
 		}

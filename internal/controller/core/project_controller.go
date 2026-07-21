@@ -164,6 +164,7 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		for _, lkey := range labelsToPropagate {
 			if lval, ok := project.Labels[lkey]; ok {
+				log.Debug("Propagating label from project to project namespace", "labelKey", lkey, "labelValue", lval)
 				utils.SetMetaDataLabel(&projectNamespace.ObjectMeta, lkey, lval)
 			}
 		}
