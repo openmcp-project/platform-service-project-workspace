@@ -408,6 +408,16 @@ func (c *PWOConfigController) reconcile(ctx context.Context, req reconcile.Reque
 				}
 			}
 		}
+		logLabels, err := json.Marshal(map[string][]string{
+			"projectToProjectNamespace":     c.labelsFromProjectToProjectNamespace,
+			"projectToWorkspaceNamespaces":  c.labelsFromProjectToWorkspaceNamespaces,
+			"workspaceToWorkspaceNamespace": c.labelsFromWorkspaceToWorkspaceNamespace,
+		})
+		if err != nil {
+			log.Error(err, "unable to marshal label propagation configuration into json")
+		} else {
+			log.Debug("Label propagation configuration", "labels", string(logLabels))
+		}
 	}
 
 	return cfg, reconcile.Result{}, nil
