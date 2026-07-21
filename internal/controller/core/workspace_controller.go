@@ -73,6 +73,7 @@ func (r *WorkspaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return rr, err
 }
 
+// nolint:gocyclo
 func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logging.FromContextOrPanic(ctx)
 
@@ -173,6 +174,24 @@ func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (
 	//
 
 	result, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingStatic.Client(), workspaceNamespace, func() error {
+		labelsToPropagate, err := r.Config.LabelPropagationProjectToWorkspaceNamespaces(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := project.Labels[lkey]; ok {
+				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
+			}
+		}
+		labelsToPropagate, err = r.Config.LabelPropagationWorkspaceToWorkspaceNamespace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := workspace.Labels[lkey]; ok {
+				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
+			}
+		}
 		utils.SetWorkspaceLabel(workspaceNamespace, workspace.Name)
 		utils.SetProjectLabel(workspaceNamespace, project.Name)
 		r.applyManagementLabel(workspaceNamespace)

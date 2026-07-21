@@ -30,12 +30,18 @@ spec:
         - get
         - list
         - watch
+    propagateLabelsToProjectNamespace:
+    - core.openmcp.cloud/mylabel
+    propagateLabelsToWorkspaceNamespaces:
+    - core.openmcp.cloud/mylabel
   workspace:
     resourcesBlockingDeletion:
     - group: mygroup.example.org
       version: v1alpha1
       kind: MyWorkspaceScopedResource
     additionalPermissions: <...>
+    propagateLabelsToWorkspaceNamespace:
+    - core.openmcp.cloud/mylabel
   memberOverrides:
   - kind: User
     name: kubernetes-admin
@@ -65,6 +71,13 @@ Via the optional `spec.project.additionalPermissions` field, end-users can be gr
 
 By default, users have permissions for workspaces and serviceaccounts, with the `view` role having only read access and the `admin` role having full access for these resources. Both roles can also list pods (there are usually no pods on the onboarding cluster, this is mainly to prevent k9s from crashing) and read resourcequotas. Admins can also create tokens for serviceaccounts and manage secrets.
 
+#### Label Propagation
+
+The optional `propagateLabelsToProjectNamespace` field allows to list keys of metadata labels which will be propagated from the `Project` resource to its namespace, if they exist.
+Similarly, `propagateLabelsToWorkspaceNamespaces` can be used to propagate labels from the `Project` to the namespaces of all `Workspace` resources within the project's namespace. If the workspace configuration's `propagateLabelsToWorkspaceNamespace` contains one or more labely keys which overlap with the ones from this list, the labels from the `Workspace` will take precedence over the ones from the `Project`, if the label key exists on both resources.
+
+Note that this feature will only ever add or update labels on the respective namespaces. Neither removing a label from a `Project`, nor removing its key from this configuration, will cause the label to be removed from the namespace, once it has been propagated there.
+
 ### Workspace configuration
 
 The workspace configuration under `spec.workspace` is pretty much identical to the project one, only that they affect workspace namespaces instead of project ones. Therefore, the sections below will just list the different defaults.
@@ -78,6 +91,12 @@ By default, only `ControlPlane` resources block workspace deletion. If the platf
 #### Additional Permissions
 
 Both roles can manage (read for `view`, read and write for `admin`) `ControlPlane` resources, as well as secrets, configmaps, and serviceaccounts. In [v1 support mode](./v1.md), `ManagedControlPlane` and `ClusterAdmin` resources are covered as well. Similar to projects, both roles can list pods and read resourcequotas, with the `admin` additionally being able to create tokens for serviceaccounts.
+
+#### Label Propagation
+
+The optional `propagateLabelsToWorkspaceNamespace` field can be used to propagate labels from the `Workspace` resource onto its corresponding namespace.
+
+As mentioned for the propagation from `Project` resources described above, this feature will only add or update labels on the respective namespaces, never delete them.
 
 ### Member Overrides
 

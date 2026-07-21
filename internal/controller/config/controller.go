@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 	"sync"
 
@@ -61,12 +62,17 @@ type PWOConfigController struct {
 	permissibleProjectResources        []rbacv1.PolicyRule
 	permissibleWorkspaceResources      []rbacv1.PolicyRule
 	// the config allows more precise definition of roles, therefore the 'permissible...' fields are not enough to store the permissions from the config
-	projectPermissionsFromConfig   map[string][]rbacv1.PolicyRule
-	workspacePermissionsFromConfig map[string][]rbacv1.PolicyRule
-	onboardingClusterAccessDynamic *clusters.Cluster
-	memberOverrides                []pwv1alpha1.MemberOverride
-	missingConfig                  bool
+	projectPermissionsFromConfig            map[string][]rbacv1.PolicyRule
+	workspacePermissionsFromConfig          map[string][]rbacv1.PolicyRule
+	onboardingClusterAccessDynamic          *clusters.Cluster
+	memberOverrides                         []pwv1alpha1.MemberOverride
+	missingConfig                           bool
+	labelsFromProjectToProjectNamespace     []string
+	labelsFromProjectToWorkspaceNamespaces  []string
+	labelsFromWorkspaceToWorkspaceNamespace []string
 }
+
+var _ SharedInformation = &PWOConfigController{}
 
 // NewPWConfigController creates a new PWOConfigController.
 // This controller has the following responsibilities:
@@ -200,6 +206,9 @@ func (c *PWOConfigController) reconcile(ctx context.Context, req reconcile.Reque
 		c.workspacePermissionsFromConfig = nil
 		c.memberOverrides = nil
 		c.missingConfig = true
+		c.labelsFromProjectToProjectNamespace = nil
+		c.labelsFromProjectToWorkspaceNamespaces = nil
+		c.labelsFromWorkspaceToWorkspaceNamespace = nil
 		log.Info("Resetting state and deleting AccessRequest because ProjectWorkspaceConfig is missing or in deletion")
 		return c.Car.ReconcileDelete(ctx, req)
 	}
@@ -290,6 +299,9 @@ func (c *PWOConfigController) reconcile(ctx context.Context, req reconcile.Reque
 	c.permissibleWorkspaceResources = newPermissibleWorkspaceResources
 	c.projectPermissionsFromConfig = newProjectPermissionsFromConfig
 	c.workspacePermissionsFromConfig = newWorkspacePermissionsFromConfig
+	c.labelsFromProjectToProjectNamespace = cfg.Spec.Project.PropagateLabelsToProjectNamespace
+	c.labelsFromProjectToWorkspaceNamespaces = cfg.Spec.Project.PropagateLabelsToWorkspaceNamespaces
+	c.labelsFromWorkspaceToWorkspaceNamespace = cfg.Spec.Workspace.PropagateLabelsToWorkspaceNamespace
 
 	// update the ClusterRoles for project and workspace to ensure end-users have sufficient permissions for the resources registered by the ServiceProviders and the additional permissions from the config
 	log.Debug("Ensuring that ClusterRoles for projects and workspaces are up-to-date ...")
@@ -480,4 +492,25 @@ func (c *PWOConfigController) OnboardingClusterDynamic(ctx context.Context) (*cl
 		return nil, fmt.Errorf("dynamic onboarding cluster access for workspace controller not initialized yet")
 	}
 	return c.onboardingClusterAccessDynamic, nil
+}
+
+// LabelPropagationProjectToProjectNamespace implements [SharedInformation].
+func (c *PWOConfigController) LabelPropagationProjectToProjectNamespace(ctx context.Context) ([]string, error) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return slices.Clone(c.labelsFromProjectToProjectNamespace), nil
+}
+
+// LabelPropagationProjectToWorkspaceNamespaces implements [SharedInformation].
+func (c *PWOConfigController) LabelPropagationProjectToWorkspaceNamespaces(ctx context.Context) ([]string, error) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return slices.Clone(c.labelsFromProjectToWorkspaceNamespaces), nil
+}
+
+// LabelPropagationWorkspaceToWorkspaceNamespace implements [SharedInformation].
+func (c *PWOConfigController) LabelPropagationWorkspaceToWorkspaceNamespace(ctx context.Context) ([]string, error) {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
+	return slices.Clone(c.labelsFromWorkspaceToWorkspaceNamespace), nil
 }

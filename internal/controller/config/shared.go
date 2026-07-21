@@ -48,4 +48,11 @@ type SharedInformation interface {
 	// It is regularly updated to include get permissions for all resources that might block deletion of projects or workspaces.
 	// For interacting with any other resource, the static client needs to be used.
 	OnboardingClusterDynamic(ctx context.Context) (*clusters.Cluster, error)
+
+	// LabelPropagationProjectToProjectNamespace returns the list of labels that should be propagated from a project to its project namespace.
+	LabelPropagationProjectToProjectNamespace(ctx context.Context) ([]string, error)
+	// LabelPropagationProjectToWorkspaceNamespaces returns the list of labels that should be propagated from a project to all its workspace namespaces.
+	LabelPropagationProjectToWorkspaceNamespaces(ctx context.Context) ([]string, error)
+	// LabelPropagationWorkspaceToWorkspaceNamespace returns the list of labels that should be propagated from a workspace to its workspace namespace.
+	LabelPropagationWorkspaceToWorkspaceNamespace(ctx context.Context) ([]string, error)
 }

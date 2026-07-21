@@ -83,12 +83,14 @@ var (
 
 func Test_WorkspaceReconciler_Reconcile(t *testing.T) {
 	testCases := []struct {
-		desc             string
-		initObjs         []client.Object
-		interceptorFuncs interceptor.Funcs
-		expectedResult   ctrl.Result
-		expectedErr      error
-		validate         func(t *testing.T, ctx context.Context, c client.Client) error
+		desc                                    string
+		initObjs                                []client.Object
+		interceptorFuncs                        interceptor.Funcs
+		expectedResult                          ctrl.Result
+		expectedErr                             error
+		labelsFromProjectToWorkspaceNamespaces  []string
+		labelsFromWorkspaceToWorkspaceNamespace []string
+		validate                                func(t *testing.T, ctx context.Context, c client.Client) error
 	}{
 		{
 			desc: "CO-1154 should not return error when not found",
@@ -227,6 +229,183 @@ func Test_WorkspaceReconciler_Reconcile(t *testing.T) {
 			},
 		},
 		{
+			desc: "should propagate label from project to workspace namespace",
+			initObjs: []client.Object{
+				sampleWorkspace,
+				projectNamespace,
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{
+						"openmcp.cloud/test":  "foo",
+						"openmcp.cloud/test2": "bar",
+					}
+					return p
+				}(),
+			},
+			labelsFromProjectToWorkspaceNamespaces: []string{"openmcp.cloud/test", "openmcp.cloud/test2"},
+			expectedResult:                         reconcile.Result{},
+			expectedErr:                            nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				assert.Equal(t, "bar", ns.Labels["openmcp.cloud/test2"])
+				return nil
+			},
+		},
+		{
+			desc: "should propagate label from workspace to workspace namespace",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Workspace {
+					ws := sampleWorkspace.DeepCopy()
+					ws.Labels = map[string]string{"openmcp.cloud/test": "foobar"}
+					return ws
+				}(),
+				projectNamespace,
+				sampleProject,
+			},
+			labelsFromWorkspaceToWorkspaceNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                          reconcile.Result{},
+			expectedErr:                             nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "foobar", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "workspace label should take precedence over project label on same key",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Workspace {
+					ws := sampleWorkspace.DeepCopy()
+					ws.Labels = map[string]string{"openmcp.cloud/test": "bar"}
+					return ws
+				}(),
+				projectNamespace,
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return p
+				}(),
+			},
+			labelsFromProjectToWorkspaceNamespaces:  []string{"openmcp.cloud/test"},
+			labelsFromWorkspaceToWorkspaceNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                          reconcile.Result{},
+			expectedErr:                             nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "bar", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "should use project label value when workspace does not have the key",
+			initObjs: []client.Object{
+				sampleWorkspace,
+				projectNamespace,
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return p
+				}(),
+			},
+			labelsFromProjectToWorkspaceNamespaces:  []string{"openmcp.cloud/test"},
+			labelsFromWorkspaceToWorkspaceNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                          reconcile.Result{},
+			expectedErr:                             nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "should use workspace label value when project does not have the key",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Workspace {
+					ws := sampleWorkspace.DeepCopy()
+					ws.Labels = map[string]string{"openmcp.cloud/test": "bar"}
+					return ws
+				}(),
+				projectNamespace,
+				sampleProject,
+			},
+			labelsFromProjectToWorkspaceNamespaces:  []string{"openmcp.cloud/test"},
+			labelsFromWorkspaceToWorkspaceNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                          reconcile.Result{},
+			expectedErr:                             nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "bar", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "should update existing label on workspace namespace when project label changes",
+			initObjs: []client.Object{
+				sampleWorkspace,
+				projectNamespace,
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return p
+				}(),
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "project-sample--ws-sample",
+						Labels: map[string]string{"openmcp.cloud/test": "bar"},
+					},
+				},
+			},
+			labelsFromProjectToWorkspaceNamespaces: []string{"openmcp.cloud/test"},
+			expectedResult:                         reconcile.Result{},
+			expectedErr:                            nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "should update existing label on workspace namespace when workspace label changes",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Workspace {
+					ws := sampleWorkspace.DeepCopy()
+					ws.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return ws
+				}(),
+				projectNamespace,
+				sampleProject,
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:   "project-sample--ws-sample",
+						Labels: map[string]string{"openmcp.cloud/test": "bar"},
+					},
+				},
+			},
+			labelsFromWorkspaceToWorkspaceNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                          reconcile.Result{},
+			expectedErr:                             nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				ws := &pwv1alpha1.Workspace{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleWorkspace), ws))
+				ns := namespaceCreatedForWorkspace(t, ctx, c, ws, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
 			desc: "CO-1154 should not delete namespace when deletion is blocked by resources",
 			initObjs: []client.Object{
 				sampleWorkspaceDeleted,
@@ -297,7 +476,7 @@ func Test_WorkspaceReconciler_Reconcile(t *testing.T) {
 						},
 						Source: pwv1alpha1.SourceProjectWorkspaceConfig,
 					},
-				}, nil),
+				}, nil, nil, tC.labelsFromProjectToWorkspaceNamespaces, tC.labelsFromWorkspaceToWorkspaceNamespace),
 				"test",
 			))
 			assert.NoError(t, err)

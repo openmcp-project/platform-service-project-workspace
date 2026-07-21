@@ -10,22 +10,28 @@ import (
 	pwv1alpha1 "github.com/openmcp-project/platform-service-project-workspace/api/v2/core/v1alpha1"
 )
 
-func NewFakeSharedInformation(onboardingClient client.Client, resourcesBlockingProjectDeletion []DeletionBlockingResource, resourcesBlockingWorkspaceDeletion []DeletionBlockingResource, memberOverrides pwv1alpha1.MemberOverrides) *FakeSharedInformation {
+func NewFakeSharedInformation(onboardingClient client.Client, resourcesBlockingProjectDeletion []DeletionBlockingResource, resourcesBlockingWorkspaceDeletion []DeletionBlockingResource, memberOverrides pwv1alpha1.MemberOverrides, labelsFromProjectToProjectNamespace, labelsFromProjectToWorkspaceNamespaces, labelsFromWorkspaceToWorkspaceNamespace []string) *FakeSharedInformation {
 	return &FakeSharedInformation{
-		OnboardingCluster:                      clusters.NewTestClusterFromClient("onboarding", onboardingClient),
-		ResourcesBlockingProjectDeletionData:   resourcesBlockingProjectDeletion,
-		ResourcesBlockingWorkspaceDeletionData: resourcesBlockingWorkspaceDeletion,
-		MemberOverridesData:                    memberOverrides,
+		OnboardingCluster:                       clusters.NewTestClusterFromClient("onboarding", onboardingClient),
+		ResourcesBlockingProjectDeletionData:    resourcesBlockingProjectDeletion,
+		ResourcesBlockingWorkspaceDeletionData:  resourcesBlockingWorkspaceDeletion,
+		MemberOverridesData:                     memberOverrides,
+		LabelsFromProjectToProjectNamespace:     labelsFromProjectToProjectNamespace,
+		LabelsFromProjectToWorkspaceNamespaces:  labelsFromProjectToWorkspaceNamespaces,
+		LabelsFromWorkspaceToWorkspaceNamespace: labelsFromWorkspaceToWorkspaceNamespace,
 	}
 }
 
 // FakeSharedInformation is a dummy implementation of the SharedInformation interface.
 // It is meant for unit tests and should not be used anywhere else.
 type FakeSharedInformation struct {
-	OnboardingCluster                      *clusters.Cluster
-	ResourcesBlockingProjectDeletionData   []DeletionBlockingResource
-	ResourcesBlockingWorkspaceDeletionData []DeletionBlockingResource
-	MemberOverridesData                    pwv1alpha1.MemberOverrides
+	OnboardingCluster                       *clusters.Cluster
+	ResourcesBlockingProjectDeletionData    []DeletionBlockingResource
+	ResourcesBlockingWorkspaceDeletionData  []DeletionBlockingResource
+	MemberOverridesData                     pwv1alpha1.MemberOverrides
+	LabelsFromProjectToProjectNamespace     []string
+	LabelsFromProjectToWorkspaceNamespaces  []string
+	LabelsFromWorkspaceToWorkspaceNamespace []string
 }
 
 var _ SharedInformation = &FakeSharedInformation{}
@@ -68,4 +74,28 @@ func (f *FakeSharedInformation) ResourcesBlockingWorkspaceDeletion(ctx context.C
 		return nil, nil
 	}
 	return f.ResourcesBlockingWorkspaceDeletionData, nil
+}
+
+// LabelPropagationProjectToProjectNamespace implements [SharedInformation].
+func (f *FakeSharedInformation) LabelPropagationProjectToProjectNamespace(ctx context.Context) ([]string, error) {
+	if f == nil {
+		return nil, nil
+	}
+	return f.LabelsFromProjectToProjectNamespace, nil
+}
+
+// LabelPropagationProjectToWorkspaceNamespaces implements [SharedInformation].
+func (f *FakeSharedInformation) LabelPropagationProjectToWorkspaceNamespaces(ctx context.Context) ([]string, error) {
+	if f == nil {
+		return nil, nil
+	}
+	return f.LabelsFromProjectToWorkspaceNamespaces, nil
+}
+
+// LabelPropagationWorkspaceToWorkspaceNamespace implements [SharedInformation].
+func (f *FakeSharedInformation) LabelPropagationWorkspaceToWorkspaceNamespace(ctx context.Context) ([]string, error) {
+	if f == nil {
+		return nil, nil
+	}
+	return f.LabelsFromWorkspaceToWorkspaceNamespace, nil
 }

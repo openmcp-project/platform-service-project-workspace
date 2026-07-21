@@ -158,6 +158,15 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 	//
 
 	result, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingStatic.Client(), projectNamespace, func() error {
+		labelsToPropagate, err := r.Config.LabelPropagationProjectToProjectNamespace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := project.Labels[lkey]; ok {
+				utils.SetMetaDataLabel(&projectNamespace.ObjectMeta, lkey, lval)
+			}
+		}
 		utils.SetProjectLabel(projectNamespace, project.Name)
 		r.applyManagementLabel(projectNamespace)
 		return nil

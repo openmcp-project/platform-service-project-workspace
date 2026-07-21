@@ -81,12 +81,13 @@ var (
 
 func Test_ProjectReconciler_Reconcile(t *testing.T) {
 	testCases := []struct {
-		desc             string
-		initObjs         []client.Object
-		interceptorFuncs interceptor.Funcs
-		expectedResult   ctrl.Result
-		expectedErr      error
-		validate         func(t *testing.T, ctx context.Context, c client.Client) error
+		desc                                string
+		initObjs                            []client.Object
+		interceptorFuncs                    interceptor.Funcs
+		expectedResult                      ctrl.Result
+		expectedErr                         error
+		labelsFromProjectToProjectNamespace []string
+		validate                            func(t *testing.T, ctx context.Context, c client.Client) error
 	}{
 		{
 			desc: "CO-1154 should not return error when not found",
@@ -186,6 +187,94 @@ func Test_ProjectReconciler_Reconcile(t *testing.T) {
 			},
 		},
 		{
+			desc: "should not propagate label to project namespace if label is not in config",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return p
+				}(),
+			},
+			labelsFromProjectToProjectNamespace: nil,
+			expectedResult:                      reconcile.Result{},
+			expectedErr:                         nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				p := &pwv1alpha1.Project{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleProject), p))
+				ns := namespaceCreatedForProject(t, ctx, c, p, true)
+				assert.NotContains(t, ns.Labels, "openmcp.cloud/test")
+				return nil
+			},
+		},
+		{
+			desc: "should update existing label on project namespace when project label changes",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{"openmcp.cloud/test": "foo"}
+					return p
+				}(),
+				&corev1.Namespace{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "project-sample",
+						Labels: map[string]string{
+							"openmcp.cloud/test": "bar",
+						},
+					},
+				},
+			},
+			labelsFromProjectToProjectNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                      reconcile.Result{},
+			expectedErr:                         nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				p := &pwv1alpha1.Project{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleProject), p))
+				ns := namespaceCreatedForProject(t, ctx, c, p, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				return nil
+			},
+		},
+		{
+			desc: "should not propagate label to project namespace if label is absent from project",
+			initObjs: []client.Object{
+				sampleProject,
+			},
+			labelsFromProjectToProjectNamespace: []string{"openmcp.cloud/test"},
+			expectedResult:                      reconcile.Result{},
+			expectedErr:                         nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				p := &pwv1alpha1.Project{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleProject), p))
+				ns := namespaceCreatedForProject(t, ctx, c, p, true)
+				assert.NotContains(t, ns.Labels, "openmcp.cloud/test")
+				return nil
+			},
+		},
+		{
+			desc: "should propagate label from project to project namespace",
+			initObjs: []client.Object{
+				func() *pwv1alpha1.Project {
+					p := sampleProject.DeepCopy()
+					p.Labels = map[string]string{
+						"openmcp.cloud/test":  "foo",
+						"openmcp.cloud/test2": "bar",
+					}
+					return p
+				}(),
+			},
+			labelsFromProjectToProjectNamespace: []string{"openmcp.cloud/test", "openmcp.cloud/test2"},
+			expectedResult:                      reconcile.Result{},
+			expectedErr:                         nil,
+			validate: func(t *testing.T, ctx context.Context, c client.Client) error {
+				p := &pwv1alpha1.Project{}
+				assert.NoError(t, c.Get(ctx, client.ObjectKeyFromObject(sampleProject), p))
+				ns := namespaceCreatedForProject(t, ctx, c, p, true)
+				assert.Equal(t, "foo", ns.Labels["openmcp.cloud/test"])
+				assert.Equal(t, "bar", ns.Labels["openmcp.cloud/test2"])
+				return nil
+			},
+		},
+		{
 			desc: "CO-1154 should not delete namespace when deletion is blocked by resources",
 			initObjs: []client.Object{
 				sampleProjectDeleted,
@@ -253,7 +342,7 @@ func Test_ProjectReconciler_Reconcile(t *testing.T) {
 						},
 						Source: pwv1alpha1.SourceProjectWorkspaceConfig,
 					},
-				}, nil, nil),
+				}, nil, nil, tC.labelsFromProjectToProjectNamespace, nil, nil),
 				"test",
 			))
 			assert.NoError(t, err)
