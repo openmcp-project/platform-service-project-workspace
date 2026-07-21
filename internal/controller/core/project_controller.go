@@ -202,6 +202,7 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.And(
 				predicate.Or(
 					predicate.GenerationChangedPredicate{},
+					predicate.LabelChangedPredicate{},
 					ctrlutils.DeletionTimestampChangedPredicate{},
 					ctrlutils.GotAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueReconcile),
 					ctrlutils.LostAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueIgnore),
