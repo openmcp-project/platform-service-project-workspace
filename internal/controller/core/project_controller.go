@@ -158,6 +158,16 @@ func (r *ProjectReconciler) reconcile(ctx context.Context, req ctrl.Request) (ct
 	//
 
 	result, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingStatic.Client(), projectNamespace, func() error {
+		labelsToPropagate, err := r.Config.LabelPropagationProjectToProjectNamespace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := project.Labels[lkey]; ok {
+				log.Debug("Propagating label from project to project namespace", "labelKey", lkey, "labelValue", lval)
+				utils.SetMetaDataLabel(&projectNamespace.ObjectMeta, lkey, lval)
+			}
+		}
 		utils.SetProjectLabel(projectNamespace, project.Name)
 		r.applyManagementLabel(projectNamespace)
 		return nil
@@ -193,6 +203,7 @@ func (r *ProjectReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.And(
 				predicate.Or(
 					predicate.GenerationChangedPredicate{},
+					predicate.LabelChangedPredicate{},
 					ctrlutils.DeletionTimestampChangedPredicate{},
 					ctrlutils.GotAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueReconcile),
 					ctrlutils.LostAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueIgnore),

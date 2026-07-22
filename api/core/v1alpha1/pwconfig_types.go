@@ -48,6 +48,13 @@ type ProjectConfig struct {
 	// AdditionalPermissions defines additional permissions users should have in a project, depending on their role.
 	// +optional
 	AdditionalPermissions map[ProjectMemberRole][]rbacv1.PolicyRule `json:"additionalPermissions,omitempty"`
+	// PropagateLabelsToProjectNamespace lists labels which should be propagated to the project namespace.
+	// +optional
+	PropagateLabelsToProjectNamespace []string `json:"propagateLabelsToProjectNamespace,omitempty"`
+	// PropagateLabelsToWorkspaceNamespaces lists labels which should be propagated to all namespaces belonging to workspaces in the project.
+	// If a label is configured to be propagated from Workspace and Project, but has a different value, the value from the Workspace will be used.
+	// +optional
+	PropagateLabelsToWorkspaceNamespaces []string `json:"propagateLabelsToWorkspaceNamespaces,omitempty"`
 }
 
 // WorkspaceConfig contains the configuration for workspaces.
@@ -57,6 +64,9 @@ type WorkspaceConfig struct {
 	// AdditionalPermissions defines additional permissions users should have in a workspace, depending on their role.
 	// +optional
 	AdditionalPermissions map[WorkspaceMemberRole][]rbacv1.PolicyRule `json:"additionalPermissions,omitempty"`
+	// PropagateLabelsToWorkspaceNamespace lists labels which should be propagated to the workspace namespace.
+	// +optional
+	PropagateLabelsToWorkspaceNamespace []string `json:"propagateLabelsToWorkspaceNamespace,omitempty"`
 }
 
 type WebhookConfig struct {

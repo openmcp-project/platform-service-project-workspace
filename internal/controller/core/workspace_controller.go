@@ -16,6 +16,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/openmcp-project/controller-utils/pkg/clusters"
@@ -73,6 +74,7 @@ func (r *WorkspaceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	return rr, err
 }
 
+// nolint:gocyclo
 func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logging.FromContextOrPanic(ctx)
 
@@ -173,6 +175,26 @@ func (r *WorkspaceReconciler) reconcile(ctx context.Context, req ctrl.Request) (
 	//
 
 	result, err := controllerutil.CreateOrUpdate(ctx, r.OnboardingStatic.Client(), workspaceNamespace, func() error {
+		labelsToPropagate, err := r.Config.LabelPropagationProjectToWorkspaceNamespaces(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := project.Labels[lkey]; ok {
+				log.Debug("Propagating label from project to workspace namespace", "labelKey", lkey, "labelValue", lval)
+				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
+			}
+		}
+		labelsToPropagate, err = r.Config.LabelPropagationWorkspaceToWorkspaceNamespace(ctx)
+		if err != nil {
+			return err
+		}
+		for _, lkey := range labelsToPropagate {
+			if lval, ok := workspace.Labels[lkey]; ok {
+				log.Debug("Propagating label from workspace to workspace namespace", "labelKey", lkey, "labelValue", lval)
+				utils.SetMetaDataLabel(&workspaceNamespace.ObjectMeta, lkey, lval)
+			}
+		}
 		utils.SetWorkspaceLabel(workspaceNamespace, workspace.Name)
 		utils.SetProjectLabel(workspaceNamespace, project.Name)
 		r.applyManagementLabel(workspaceNamespace)
@@ -364,6 +386,7 @@ func (r *WorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.And(
 				predicate.Or(
 					predicate.GenerationChangedPredicate{},
+					predicate.LabelChangedPredicate{},
 					ctrlutils.DeletionTimestampChangedPredicate{},
 					ctrlutils.GotAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueReconcile),
 					ctrlutils.LostAnnotationPredicate(apiconst.OperationAnnotation, apiconst.OperationAnnotationValueIgnore),
@@ -373,6 +396,34 @@ func (r *WorkspaceReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				),
 			),
 		)).
+		Watches(&pwv1alpha1.Project{}, handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []ctrl.Request {
+			// if the project labels changed, we might need to propagate this change to the project's workspaces, so we enqueue all workspaces in the project namespace
+			log := logging.FromContextOrDiscard(ctx)
+			project, ok := obj.(*pwv1alpha1.Project)
+			if !ok {
+				log.Error(nil, "Failed to cast object to Project", "object", obj)
+				return nil
+			}
+			nsName := project.Status.Namespace
+			if nsName == "" {
+				return nil
+			}
+			workspaces := &pwv1alpha1.WorkspaceList{}
+			if err := r.OnboardingStatic.Client().List(ctx, workspaces, client.InNamespace(nsName)); err != nil {
+				log.Error(err, "Failed to list workspaces for project", "project", project.Name)
+				return nil
+			}
+			requests := make([]ctrl.Request, len(workspaces.Items))
+			for i, ws := range workspaces.Items {
+				requests[i] = ctrl.Request{
+					NamespacedName: types.NamespacedName{
+						Name:      ws.Name,
+						Namespace: ws.Namespace,
+					},
+				}
+			}
+			return requests
+		}), builder.WithPredicates(predicate.LabelChangedPredicate{})).
 		Complete(r)
 }
 

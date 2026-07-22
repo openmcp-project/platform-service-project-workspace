@@ -164,6 +164,19 @@ spec:
                     description: AdditionalPermissions defines additional permissions
                       users should have in a project, depending on their role.
                     type: object
+                  propagateLabelsToProjectNamespace:
+                    description: PropagateLabelsToProjectNamespace lists labels which
+                      should be propagated to the project namespace.
+                    items:
+                      type: string
+                    type: array
+                  propagateLabelsToWorkspaceNamespaces:
+                    description: |-
+                      PropagateLabelsToWorkspaceNamespaces lists labels which should be propagated to all namespaces belonging to workspaces in the project.
+                      If a label is configured to be propagated from Workspace and Project, but has a different value, the value from the Workspace will be used.
+                    items:
+                      type: string
+                    type: array
                   resourcesBlockingDeletion:
                     items:
                       description: |-
@@ -248,6 +261,12 @@ spec:
                     description: AdditionalPermissions defines additional permissions
                       users should have in a workspace, depending on their role.
                     type: object
+                  propagateLabelsToWorkspaceNamespace:
+                    description: PropagateLabelsToWorkspaceNamespace lists labels
+                      which should be propagated to the workspace namespace.
+                    items:
+                      type: string
+                    type: array
                   resourcesBlockingDeletion:
                     items:
                       description: |-
