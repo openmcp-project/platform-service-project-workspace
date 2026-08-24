@@ -11,7 +11,7 @@ require (
 	github.com/openmcp-project/openmcp-operator/lib v1.3.0
 	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.3.0
 	github.com/spf13/cobra v1.10.2
-	github.com/stretchr/testify v1.11.1
+	github.com/stretchr/testify v1.12.0
 	k8s.io/api v0.36.3
 	k8s.io/apimachinery v0.36.3
 	k8s.io/client-go v0.36.3
