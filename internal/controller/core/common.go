@@ -29,7 +29,8 @@ var (
 
 	deleteFinalizer = pwv1alpha1.GroupVersion.Group
 
-	ControllerName = "project-workspace"
+	ControllerName  = "project-workspace"
+	ClusterRoleKind = "ClusterRole"
 )
 
 func init() {

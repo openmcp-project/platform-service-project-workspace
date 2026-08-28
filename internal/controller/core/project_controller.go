@@ -232,7 +232,7 @@ func (r *ProjectReconciler) createOrUpdateRoleBinding(ctx context.Context, proje
 		roleBinding.Subjects = getSubjectsForProjectRole(project, role)
 		roleBinding.RoleRef = rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
-			Kind:     "ClusterRole",
+			Kind:     ClusterRoleKind,
 			Name:     utils.ClusterRoleForRole(role),
 		}
 
@@ -317,7 +317,7 @@ func (r *ProjectReconciler) createOrUpdateClusterRole(ctx context.Context, proje
 			clusterRoleBinding.Subjects = getSubjectsForProjectRole(project, role)
 			clusterRoleBinding.RoleRef = rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
-				Kind:     "ClusterRole",
+				Kind:     ClusterRoleKind,
 				Name:     clusterRole.Name,
 			}
 

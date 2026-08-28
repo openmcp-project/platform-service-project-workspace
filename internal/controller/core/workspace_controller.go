@@ -261,7 +261,7 @@ func (r *WorkspaceReconciler) createOrUpdateRoleBinding(ctx context.Context, wor
 
 		roleBinding.RoleRef = rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
-			Kind:     "ClusterRole",
+			Kind:     ClusterRoleKind,
 			Name:     utils.ClusterRoleForRole(workspaceRole),
 		}
 
@@ -319,7 +319,7 @@ func (r *WorkspaceReconciler) createOrUpdateClusterRole(ctx context.Context, pro
 			clusterRoleBinding.Subjects = getSubjectsForWorkspaceRole(ws, role)
 			clusterRoleBinding.RoleRef = rbacv1.RoleRef{
 				APIGroup: rbacv1.GroupName,
-				Kind:     "ClusterRole",
+				Kind:     ClusterRoleKind,
 				Name:     clusterRole.Name,
 			}
 
@@ -357,7 +357,7 @@ func (r *WorkspaceReconciler) deleteClusterRole(ctx context.Context, project *pw
 			}
 			log.Debug("ClusterRole already deleted, nothing to do", "clusterRole", clusterRole.Name)
 		} else {
-			log.Debug("Deleted ClusterRole", "clusterRole", clusterRole.Name)
+			log.Debug("Deleted ClusterRole", ClusterRoleKind, clusterRole.Name)
 		}
 
 		clusterRoleBinding := &rbacv1.ClusterRoleBinding{
