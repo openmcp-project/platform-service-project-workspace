@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/openmcp-project/controller-utils/pkg/fips"
+
 	"github.com/openmcp-project/platform-service-project-workspace/cmd/platform-service-project-workspace/app"
 )
 
