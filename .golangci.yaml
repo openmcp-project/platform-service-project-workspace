@@ -26,6 +26,13 @@ linters:
         - name: comment-spacings
   exclusions:
     generated: lax
+    rules:
+      - linters:
+          - dupl
+        path: internal/*
+      - linters:
+          - goconst
+        path: _test\.go
     presets:
       - comments
       - common-false-positives
