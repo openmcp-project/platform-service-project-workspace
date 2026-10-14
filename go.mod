@@ -6,9 +6,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/onsi/gomega v1.44.0
-	github.com/openmcp-project/controller-utils v0.33.1
-	github.com/openmcp-project/openmcp-operator/api v1.4.1
-	github.com/openmcp-project/openmcp-operator/lib v1.4.1
+	github.com/openmcp-project/controller-utils v0.33.2
+	github.com/openmcp-project/openmcp-operator/api v1.4.2
+	github.com/openmcp-project/openmcp-operator/lib v1.4.2
 	github.com/openmcp-project/platform-service-project-workspace/api/v2 v2.4.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
