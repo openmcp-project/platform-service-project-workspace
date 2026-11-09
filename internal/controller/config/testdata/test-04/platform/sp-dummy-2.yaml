@@ -1,6 +1,0 @@
-apiVersion: openmcp.cloud/v1alpha1
-kind: ServiceProvider
-metadata:
-  name: dummy-2
-spec:
-  image: dummy

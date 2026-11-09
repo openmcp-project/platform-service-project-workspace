@@ -14,6 +14,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	fakediscovery "k8s.io/client-go/discovery/fake"
@@ -26,8 +27,8 @@ import (
 	testutils "github.com/openmcp-project/controller-utils/pkg/testing"
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	commonapi "github.com/openmcp-project/openmcp-operator/api/common"
+	apiconst "github.com/openmcp-project/openmcp-operator/api/constants"
 	openmcpcorev2alpha1 "github.com/openmcp-project/openmcp-operator/api/core/v2alpha1"
-	providerv1alpha1 "github.com/openmcp-project/openmcp-operator/api/provider/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess/advanced"
 
 	pwv1alpha1 "github.com/openmcp-project/platform-service-project-workspace/api/v2/core/v1alpha1"
@@ -403,7 +404,7 @@ var _ = Describe("ProjectWorkspaceConfig Controller Test", Serial, func() {
 		sharedconfig.SupportV1 = false
 	})
 
-	It("should return default values for an empty config and no ServiceProviders", func() {
+	It("should return default values for an empty config and no service CRDs", func() {
 		pwc, env := defaultTestSetup(filepath.Join("testdata", "test-01"))
 
 		expected := &expectedValues{}
@@ -495,7 +496,7 @@ var _ = Describe("ProjectWorkspaceConfig Controller Test", Serial, func() {
 		expected.validate(env, pwc)
 	})
 
-	It("should correctly handle empty config with ServiceProviders", func() {
+	It("should correctly handle empty config with service CRDs", func() {
 		pwc, env := defaultTestSetup(filepath.Join("testdata", "test-02"), &metav1.APIResourceList{
 			GroupVersion: "v1",
 			APIResources: []metav1.APIResource{
@@ -689,7 +690,7 @@ var _ = Describe("ProjectWorkspaceConfig Controller Test", Serial, func() {
 		expected.validate(env, pwc)
 	})
 
-	It("should correctly handle non-empty config with ServiceProviders and handle updates correctly", func() {
+	It("should correctly handle non-empty config with service CRDs and handle updates correctly", func() {
 		pwc, env := defaultTestSetup(filepath.Join("testdata", "test-04"), &metav1.APIResourceList{
 			GroupVersion: "mygroup.project/v1alpha1",
 			APIResources: []metav1.APIResource{
@@ -842,24 +843,37 @@ var _ = Describe("ProjectWorkspaceConfig Controller Test", Serial, func() {
 		originallyExpected.validate(env, pwc)
 
 		expected := originallyExpected.clone()
-		// add a status with a resource to a ServiceProvider
-		sp2 := &providerv1alpha1.ServiceProvider{}
-		sp2.Name = "dummy-2"
-		Expect(env.Client(platformClusterID).Get(env.Ctx, client.ObjectKeyFromObject(sp2), sp2)).To(Succeed())
-		sp2.Status.Resources = []metav1.GroupVersionKind{
-			{
-				Group:   "",
-				Version: "v1",
-				Kind:    "Pod",
+		// add a CRD for a new service resource (Pod) to the onboarding cluster
+		crd2 := &apiextensionsv1.CustomResourceDefinition{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "pods.dummy-2.example",
+				Labels: map[string]string{
+					apiconst.ServiceKindLabel: "dummy-2",
+				},
+			},
+			Spec: apiextensionsv1.CustomResourceDefinitionSpec{
+				Group: "",
+				Names: apiextensionsv1.CustomResourceDefinitionNames{
+					Kind:   "Pod",
+					Plural: "pods",
+				},
+				Scope: apiextensionsv1.NamespaceScoped,
+				Versions: []apiextensionsv1.CustomResourceDefinitionVersion{
+					{Name: "v1", Served: true, Storage: true},
+				},
 			},
 		}
-		Expect(env.Client(platformClusterID).Status().Update(env.Ctx, sp2)).To(Succeed())
+		Expect(env.Client(onboardingClusterID).Create(env.Ctx, crd2)).To(Succeed())
 		// this should add the resource to resources that block workspace deletion
 		// and grant workspace viewer and admin permissions
 		// as well as modify the AccessRequest to contain get permissions for this resource
 		expected.resourcesBlockingWorkspaceDeletion = append(expected.resourcesBlockingWorkspaceDeletion, sharedconfig.DeletionBlockingResource{
-			GroupVersionKind: sp2.Status.Resources[0],
-			Source:           fmt.Sprintf("%s[%s]", pwv1alpha1.SourceServiceProviderPrefix, sp2.Name),
+			GroupVersionKind: metav1.GroupVersionKind{
+				Group:   "",
+				Version: "v1",
+				Kind:    "Pod",
+			},
+			Source: fmt.Sprintf("%s[%s]", pwv1alpha1.SourceServiceProviderPrefix, "dummy-2"),
 		})
 		expected.workspacePermissionsPerRole[pwv1alpha1.WorkspaceRoleAdmin] = sharedconfig.AppendPolicyRules(expected.workspacePermissionsPerRole[pwv1alpha1.WorkspaceRoleAdmin],
 			rbacv1.PolicyRule{
@@ -883,8 +897,8 @@ var _ = Describe("ProjectWorkspaceConfig Controller Test", Serial, func() {
 		})
 		expected.validate(env, pwc)
 
-		// removing the ServiceProvider should undo that change
-		Expect(env.Client(platformClusterID).Delete(env.Ctx, sp2)).To(Succeed())
+		// removing the service CRD should undo that change
+		Expect(env.Client(onboardingClusterID).Delete(env.Ctx, crd2)).To(Succeed())
 		originallyExpected.validate(env, pwc)
 
 		expected = originallyExpected.clone()

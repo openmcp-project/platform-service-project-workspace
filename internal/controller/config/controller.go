@@ -10,13 +10,17 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/selection"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/discovery"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -30,7 +34,6 @@ import (
 	clustersv1alpha1 "github.com/openmcp-project/openmcp-operator/api/clusters/v1alpha1"
 	commonapi "github.com/openmcp-project/openmcp-operator/api/common"
 	apiconst "github.com/openmcp-project/openmcp-operator/api/constants"
-	providerv1alpha1 "github.com/openmcp-project/openmcp-operator/api/provider/v1alpha1"
 	"github.com/openmcp-project/openmcp-operator/lib/clusteraccess/advanced"
 
 	pwv1alpha1 "github.com/openmcp-project/platform-service-project-workspace/api/v2/core/v1alpha1"
@@ -77,7 +80,7 @@ var _ SharedInformation = &PWOConfigController{}
 // NewPWConfigController creates a new PWOConfigController.
 // This controller has the following responsibilities:
 // - It watches the ProjectWorkspaceConfig resource belonging to this instance of the PlatformService PWO and reloads it on changes.
-// - It watches ServiceProvider resources for their registered resource types in their status and updates permissions and blocking resources accordingly.
+// - It watches CRDs with the 'services.open-control-plane.io/kind' label on the onboarding cluster and updates permissions and blocking resources accordingly.
 // - It can trigger project and workspace reconciliations via the passed-in channels if the config changes in a way that requires it.
 // - It implements the SharedInformation interface, so that other controllers can query it for the current configuration.
 // - It reconciles the OnboardingCluster AccessRequests for the project and workspace controllers to ensure they can always fetch the the resources that are supposed to block deletion.
@@ -152,16 +155,16 @@ func (c *PWOConfigController) SetupWithManager(mgr ctrl.Manager) error {
 				),
 			),
 		))).
-		WatchesRawSource(source.Kind(c.platformCluster.Cluster().GetCache(), &providerv1alpha1.ServiceProvider{}, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, _ *providerv1alpha1.ServiceProvider) []ctrl.Request {
-			// if any ServiceProvider changes, we need to reconcile the config to update the registered resource types
+		WatchesRawSource(source.Kind(c.OnboardingClusterAccessStatic.Cluster().GetCache(), &apiextensionsv1.CustomResourceDefinition{}, handler.TypedEnqueueRequestsFromMapFunc(func(_ context.Context, _ *apiextensionsv1.CustomResourceDefinition) []ctrl.Request {
+			// if any CRD changes, we need to reconcile the config to update the registered resource types
 			return []ctrl.Request{
-				reconcile.Request{
+				{
 					NamespacedName: types.NamespacedName{
 						Name: c.providerName,
 					},
 				},
 			}
-		}), ctrlutils.ToTypedPredicate[*providerv1alpha1.ServiceProvider](ctrlutils.StatusChangedPredicate{}))).
+		}), ctrlutils.ToTypedPredicate[*apiextensionsv1.CustomResourceDefinition](ctrlutils.HasLabelPredicate(apiconst.ServiceKindLabel, "")))).
 		Complete(c)
 }
 
@@ -259,38 +262,45 @@ func (c *PWOConfigController) reconcile(ctx context.Context, req reconcile.Reque
 	// set member overrides
 	c.memberOverrides = cfg.Spec.MemberOverrides
 
-	// fetch ServiceProvider resources to get their registered resource types
-	log.Debug("Fetching ServiceProvider resources to get registered resource types")
-	newPermissibleProjectResources := []rbacv1.PolicyRule{}
+	// fetch CRDs with the 'services.open-control-plane.io/kind' label on the onboarding cluster
+	log.Debug("Fetching service CRDs on the onboarding cluster")
 	newPermissibleWorkspaceResources := []rbacv1.PolicyRule{}
-	sps := &providerv1alpha1.ServiceProviderList{}
-	if err := c.platformCluster.Client().List(ctx, sps); err != nil {
-		return cfg, reconcile.Result{}, fmt.Errorf("failed to list ServiceProviders: %w", err)
+	newPermissibleProjectResources := []rbacv1.PolicyRule{}
+	crds := &apiextensionsv1.CustomResourceDefinitionList{}
+	lreq, _ := labels.NewRequirement(apiconst.ServiceKindLabel, selection.Exists, []string{}) // this does not throw an error if the operator is selection.Exists and the values array is empty
+	sel := labels.NewSelector().Add(*lreq)
+	if err := c.OnboardingClusterAccessStatic.Client().List(ctx, crds, client.MatchingLabelsSelector{Selector: sel}); err != nil {
+		return cfg, reconcile.Result{}, fmt.Errorf("error listing service CRDs on the onboarding cluster: %w", err)
 	}
-	log.Debug("Fetched ServiceProviders", "count", len(sps.Items))
-	for _, sp := range sps.Items {
-		for _, gvk := range sp.Status.Resources {
+	log.Debug("Fetched service CRDs", "count", len(crds.Items))
+	for _, crd := range crds.Items {
+		spKind := crd.Labels[apiconst.ServiceKindLabel]
+		for _, version := range crd.Spec.Versions {
+			if !version.Storage {
+				continue
+			}
+			gvk := metav1.GroupVersionKind{
+				Group:   crd.Spec.Group,
+				Version: version.Name,
+				Kind:    crd.Spec.Names.Kind,
+			}
 			// add resource to list of resources blocking workspace deletion
 			// (this needs to be extended for project deletion blocking as well, if we ever allow MCPs on project level)
 			newResourcesBlockingWorkspaceDeletion = append(newResourcesBlockingWorkspaceDeletion, DeletionBlockingResource{
 				GroupVersionKind: gvk,
-				Source:           fmt.Sprintf("%s[%s]", pwv1alpha1.SourceServiceProviderPrefix, sp.Name),
+				Source:           fmt.Sprintf("%s[%s]", pwv1alpha1.SourceServiceProviderPrefix, spKind),
 			})
 			// add resource to permissible resources
-			resourceName, err := c.discoverResourceNameForGVK(log, gvk)
-			if err != nil {
-				return cfg, reconcile.Result{}, fmt.Errorf("error determining resource name for kind '%s' with apiVersion '%s/%s', registered by ServiceProvider '%s: %w", gvk.Kind, gvk.Group, gvk.Version, sp.Name, err)
-			}
 			agr := rbacv1.PolicyRule{
 				APIGroups: []string{gvk.Group},
-				Resources: []string{resourceName},
+				Resources: []string{crd.Spec.Names.Plural},
 			}
 			// if we allow MCPs on project level, we need the following line
 			// newPermissibleProjectResources = AppendPolicyRules(newPermissibleProjectResources, agr)
 			newPermissibleWorkspaceResources = AppendPolicyRules(newPermissibleWorkspaceResources, agr)
 		}
 	}
-	log.Debug("Finished processing ServiceProviders")
+	log.Debug("Finished processing service CRDs")
 
 	// now we have all required information, update internal state
 	c.resourcesBlockingProjectDeletion = newResourcesBlockingProjectDeletion

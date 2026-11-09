@@ -3,16 +3,15 @@
 Which resources are expected to exist within projects and workspaces can change dynamically during the platform service's runtime, either because the configuration is modified or because the available service resources change. The configuration controller is responsible for detecting and handling these changes.
 
 It watches the following resources:
-- `ProjectWorkspaceConfig`
+- `ProjectWorkspaceConfig` (platform cluster)
   - reacts to changes to the generation, deletion timestamp, and the `openmcp.cloud/operation` label
   - ignores changes to resources whose name differs from the name of the `PlatformService` that created the controller
-- `ServiceProvider`
-  - reacts to status changes only
+- `CustomResourceDefinition` (onboarding cluster, `services.open-control-plane.io/kind` label only)
 
 > [!NOTE]
 > **Service Resources**
 >
-> Some familiarity with the openmcp v2 architecture is required in order to understand this documentation. To quickly summarize the relevant aspect: `ServiceProvider` resources (which are managed by the landscape operators) can register so-called 'service resources' (by listing their GVK in their `ServiceProvider`'s status). End-users can then create instances of these service resources next to a `ControlPlane` within their workspaces to make the respective services available via the corresponding cluster.
+> Some familiarity with the openmcp v2 architecture is required in order to understand this documentation. To quickly summarize the relevant aspect: `ServiceProvider` resources (which are managed by the landscape operators) can register so-called 'service resources' (by attaching the `services.open-control-plane.io/kind` label to their CRDs on the onboarding cluster). End-users can then create instances of these service resources next to a `ControlPlane` within their workspaces to make the respective services available via the corresponding cluster.
 
 ## End-User Permissions
 
@@ -70,7 +69,7 @@ To achieve this, the platform service uses two `AccessRequest`s for accessing th
 
 #### Static Onboarding Cluster Access
 
-One `AccessRequest` is static, with hard-coded permission requests. It is created during startup of the platform service and requests full permissions for projects, workspaces, namespaces, RBAC stuff (clusterroles, clusterrolebindings, rolebindings), and the `SelfSubjectReview` API. The last one is required for figuring out its own identity, so that the validation webhooks can ignore changes that come from this platform service itself. All of the other permissions are required for the core functionality of this platform service.
+One `AccessRequest` is static, with hard-coded permission requests. It is created during startup of the platform service and requests full permissions for projects, workspaces, namespaces, RBAC stuff (clusterroles, clusterrolebindings, rolebindings), CRDs, and the `SelfSubjectReview` API. The last one is required for figuring out its own identity, so that the validation webhooks can ignore changes that come from this platform service itself. All of the other permissions are required for the core functionality of this platform service.
 
 The static `AccessRequest` is used for all interactions with the onboarding cluster, _except for_ detecting deletion blocking resources.
 
