@@ -257,6 +257,11 @@ func (o *RunOptions) Run(ctx context.Context) error {
 					Verbs:     []string{"*"},
 				},
 				{
+					APIGroups: []string{"apiextensions.k8s.io"},
+					Resources: []string{"customresourcedefinitions"},
+					Verbs:     []string{"get", "list", "watch"},
+				},
+				{
 					APIGroups: []string{"authentication.k8s.io/v1"},
 					Resources: []string{"selfsubjectreviews"},
 					Verbs:     []string{"*"},
